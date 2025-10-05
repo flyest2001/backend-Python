@@ -10,8 +10,8 @@ def get_default_state():
         "current_phase": "shadow_op", # Start in shadow mode
         
         # Core AURA parameters
-        "threshold": 0.998, 
-        "duration": 150,
+        "threshold": 0.98, 
+        "duration": 40,
         "n_way_comparison": 2,
 
         # Shadow mode configuration
