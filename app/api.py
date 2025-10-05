@@ -12,7 +12,7 @@ app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://frontend-next-js-neon.vercel.app"], # Adjust for your frontend URL
+    allow_origins=["https://frontend-next-js-neon.vercel.app", "http://localhost:3000"], # Adjust for your frontend URL
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
