@@ -1,9 +1,58 @@
 import numpy as np
-from scipy.optimize import differential_evolution
+# from scipy.optimize import differential_evolution # No longer needed
 from numba import njit
+from collections import namedtuple
 
 from . import state
 from .aura import aura_index
+
+# Custom lightweight implementation of Differential Evolution
+def lightweight_differential_evolution(func, bounds, args, maxiter, popsize, tol):
+    # Simple result object to mimic scipy's output
+    result = namedtuple("result", ["x"])
+    
+    # 1. Initialization
+    dims = len(bounds)
+    min_b, max_b = np.asarray(bounds).T
+    diff = np.fabs(min_b - max_b)
+    population = min_b + np.random.rand(popsize, dims) * diff
+    
+    fitness = np.asarray([func(ind, *args) for ind in population])
+    
+    best_idx = np.argmin(fitness)
+    best_vec = population[best_idx]
+    
+    # 2. Iteration Loop
+    for i in range(maxiter):
+        for j in range(popsize):
+            
+            # a. Mutation
+            idxs = [idx for idx in range(popsize) if idx != j]
+            a, b, c = population[np.random.choice(idxs, 3, replace=False)]
+            
+            mutant = np.clip(a + 0.8 * (b - c), min_b, max_b)
+            
+            # b. Crossover
+            cross_points = np.random.rand(dims) < 0.9
+            if not np.any(cross_points):
+                cross_points[np.random.randint(0, dims)] = True
+            trial = np.where(cross_points, mutant, population[j])
+            
+            # c. Selection
+            trial_fitness = func(trial, *args)
+            if trial_fitness < fitness[j]:
+                population[j] = trial
+                fitness[j] = trial_fitness
+                if trial_fitness < fitness[best_idx]:
+                    best_idx = j
+                    best_vec = trial
+        
+        # Check for convergence (tolerance)
+        if np.std(fitness) < tol:
+            break
+            
+    return result(x=best_vec)
+
 
 @njit
 def run_simulation_for_learner(threshold_R, duration, n_way, data_input):
@@ -45,16 +94,16 @@ def run_simulation_for_learner(threshold_R, duration, n_way, data_input):
         while True:
             combo_indices = active_sensor_indices[indices]
             combo_readings = readings[combo_indices]
-            aura_index = aura_index(combo_readings, n_way)
+            aura_val = aura_index(combo_readings, n_way)
 
-            if aura_index > threshold_R:
+            if aura_val > threshold_R:
                 combo_noise = sensor_noise_variance[combo_indices]
                 max_noise_idx_in_combo = np.argmax(combo_noise)
                 sensor_to_deactivate_id = combo_indices[max_noise_idx_in_combo]
 
                 if not is_sensor_off[sensor_to_deactivate_id]:
                     peer_indices = np.delete(combo_indices, max_noise_idx_in_combo)
-                    estimated_reading = np.mean(readings[peer_indices])
+                    estimated_reading = np.mean(readings[peer_indices]) if peer_indices.size > 0 else readings[sensor_to_deactivate_id]
                     true_reading = readings[sensor_to_deactivate_id]
                     total_squared_error += (true_reading - estimated_reading)**2
                     fidelity_count += 1
@@ -96,7 +145,8 @@ def learner_task(collected_data, n_way):
     print(f"Learner started. Training on {len(train_set)}, testing on {len(test_set)}.")
     
     bounds = [(0.9, 1.0), (10.0, 200.0)]
-    result = differential_evolution(objective_function, bounds, args=(train_set, n_way), maxiter=30, popsize=10, tol=0.02, disp=False)
+    # Call our new lightweight function instead of scipy's
+    result = lightweight_differential_evolution(objective_function, bounds, args=(train_set, n_way), maxiter=30, popsize=10, tol=0.02)
     new_threshold, new_duration = result.x[0], int(round(result.x[1]))
 
     _, final_fidelity = run_simulation_for_learner(new_threshold, new_duration, n_way, test_set)
