@@ -29,8 +29,8 @@ async def startup_event():
         # --- IMPORTANT ---
         # Replace these with the actual public URLs where you've hosted your CSV files.
         # For example, you can use GitHub Raw, AWS S3, Vercel Blob, etc.
-        primary_data_url = "GlobalWeather.csv"
-        fallback_data_url = "GlobalWeather.csv"
+        primary_data_url = "https://drive.google.com/file/d/1L0MtC1WhY_qMm_gZViH1nOw6IQo9ZN32/view?usp=drive_link"
+        fallback_data_url = "https://drive.google.com/file/d/1L0MtC1WhY_qMm_gZViH1nOw6IQo9ZN32/view?usp=drive_link"
 
         def download_and_parse_csv(url):
             response = requests.get(url)
@@ -38,7 +38,7 @@ async def startup_event():
             text_data = response.text
             
             # Use the csv module to parse the data
-            reader = csv.reader("GlobalWeather.csv")
+            reader = csv.reader(io.StringIO(text_data))
             header = next(reader)
             
             # Find the index of the 'date' column, if it exists
