@@ -29,8 +29,8 @@ async def startup_event():
         # --- IMPORTANT ---
         # Replace these with the actual public URLs where you've hosted your CSV files.
         # For example, you can use GitHub Raw, AWS S3, Vercel Blob, etc.
-        primary_data_url = "https://drive.google.com/file/d/1L0MtC1WhY_qMm_gZViH1nOw6IQo9ZN32/view?usp=drive_link"
-        fallback_data_url = "https://drive.google.com/file/d/1L0MtC1WhY_qMm_gZViH1nOw6IQo9ZN32/view?usp=drive_link"
+        primary_data_url = "https://drive.google.com/uc?export=download&id=1L0MtC1WhY_qMm_gZViH1nOw6IQo9ZN32"
+        fallback_data_url = "https://drive.google.com/uc?export=download&id=1L0MtC1WhY_qMm_gZViH1nOw6IQo9ZN32"
 
         def download_and_parse_csv(url):
             response = requests.get(url)
