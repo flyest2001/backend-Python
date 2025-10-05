@@ -90,12 +90,17 @@ async def startup_event():
             state.SIMULATION_STATE["data"] = normalized_data
             state.SIMULATION_STATE["total_sensors"] = num_sensors
             state.SIMULATION_STATE["sensors"] = [{"id": i, "is_off": False, "master_id": -1, "end_time": -1, "noise_variance": 0} for i in range(num_sensors)]
+            state.SIMULATION_STATE["is_ready"] = True
+            print("--- System is now ready. ---")
 
     threading.Thread(target=load_data).start()
 
 @app.get('/status')
 async def get_status():
     with state.SIMULATION_STATE["lock"]:
+        if not state.SIMULATION_STATE.get("is_ready", False):
+            return {"status": "loading_data", "message": "The simulation data is currently being loaded. Please try again in a moment."}
+
         state_copy = {k: v for k, v in state.SIMULATION_STATE.items() if k not in ["lock", "data", "shadow_samples"]}
         
         if state_copy["shadow_fidelity_count"] > 0:

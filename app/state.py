@@ -35,7 +35,8 @@ def get_default_state():
         "total_sensors": 0,
         "data": None,
         "lock": threading.Lock(),
-        "learner_status": "idle"
+        "learner_status": "idle",
+        "is_ready": False
     }
 
 SIMULATION_STATE = get_default_state()
