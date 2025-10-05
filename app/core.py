@@ -21,44 +21,46 @@ def operator_loop():
                 break
 
             # --- Hybrid Model Logic ---
+            # The learner module is disabled to remove the scipy dependency.
+            # The simulation will run indefinitely in shadow_op mode with pre-configured parameters.
             # 1. Check if a retrain should be triggered
-            current_fidelity = 1.0
-            if state.SIMULATION_STATE["shadow_fidelity_count"] > 0:
-                mse = state.SIMULATION_STATE["shadow_fidelity_error"] / state.SIMULATION_STATE["shadow_fidelity_count"]
-                current_fidelity = max(0, 1.0 - mse)
+            # current_fidelity = 1.0
+            # if state.SIMULATION_STATE["shadow_fidelity_count"] > 0:
+            #     mse = state.SIMULATION_STATE["shadow_fidelity_error"] / state.SIMULATION_STATE["shadow_fidelity_count"]
+            #     current_fidelity = max(0, 1.0 - mse)
             
-            time_since_last_retrain = t - state.SIMULATION_STATE["last_retrain_timestep"]
+            # time_since_last_retrain = t - state.SIMULATION_STATE["last_retrain_timestep"]
             
-            is_learner_busy = state.learner_thread is not None and state.learner_thread.is_alive()
+            # is_learner_busy = state.learner_thread is not None and state.learner_thread.is_alive()
             
-            # Trigger conditions
-            trigger_by_fidelity = current_fidelity < state.SIMULATION_STATE["hybrid_fidelity_threshold"]
-            trigger_by_interval = time_since_last_retrain > state.SIMULATION_STATE["hybrid_max_timesteps_since_retrain"]
+            # # Trigger conditions
+            # trigger_by_fidelity = current_fidelity < state.SIMULATION_STATE["hybrid_fidelity_threshold"]
+            # trigger_by_interval = time_since_last_retrain > state.SIMULATION_STATE["hybrid_max_timesteps_since_retrain"]
             
-            if (trigger_by_fidelity or trigger_by_interval) and not is_learner_busy and state.SIMULATION_STATE["current_phase"] != "collecting":
-                state.SIMULATION_STATE["current_phase"] = "collecting"
-                state.SIMULATION_STATE["last_retrain_timestep"] = t # Mark the start of the collection cycle
-                print(f"Retrain triggered at timestep {t}. Reason: Fidelity drop ({trigger_by_fidelity}), Interval exceeded ({trigger_by_interval}).")
+            # if (trigger_by_fidelity or trigger_by_interval) and not is_learner_busy and state.SIMULATION_STATE["current_phase"] != "collecting":
+            #     state.SIMULATION_STATE["current_phase"] = "collecting"
+            #     state.SIMULATION_STATE["last_retrain_timestep"] = t # Mark the start of the collection cycle
+            #     print(f"Retrain triggered at timestep {t}. Reason: Fidelity drop ({trigger_by_fidelity}), Interval exceeded ({trigger_by_interval}).")
 
             # 2. Execute logic based on the current phase
             phase = state.SIMULATION_STATE["current_phase"]
             
-            if phase == "collecting":
-                for s in state.SIMULATION_STATE["sensors"]:
-                    s["is_off"] = False
+            # if phase == "collecting":
+            #     for s in state.SIMULATION_STATE["sensors"]:
+            #         s["is_off"] = False
                 
-                collection_progress = t - state.SIMULATION_STATE["last_retrain_timestep"]
-                if collection_progress >= state.SIMULATION_STATE["collection_period"]:
-                    # Collection finished, start learner and switch back to shadow mode
-                    start_learn = max(0, t - state.SIMULATION_STATE["collection_period"] + 1)
-                    data_chunk = state.SIMULATION_STATE["data"][start_learn:t+1]
-                    n_way = state.SIMULATION_STATE["n_way_comparison"]
-                    state.learner_thread = threading.Thread(target=learner.learner_task, args=(data_chunk, n_way))
-                    state.learner_thread.start()
-                    state.SIMULATION_STATE["current_phase"] = "shadow_op"
-                    state.SIMULATION_STATE["last_retrain_timestep"] = t # Update to mark end of this cycle
+            #     collection_progress = t - state.SIMULATION_STATE["last_retrain_timestep"]
+            #     if collection_progress >= state.SIMULATION_STATE["collection_period"]:
+            #         # Collection finished, start learner and switch back to shadow mode
+            #         start_learn = max(0, t - state.SIMULATION_STATE["collection_period"] + 1)
+            #         data_chunk = state.SIMULATION_STATE["data"][start_learn:t+1]
+            #         n_way = state.SIMULATION_STATE["n_way_comparison"]
+            #         state.learner_thread = threading.Thread(target=learner.learner_task, args=(data_chunk, n_way))
+            #         state.learner_thread.start()
+            #         state.SIMULATION_STATE["current_phase"] = "shadow_op"
+            #         state.SIMULATION_STATE["last_retrain_timestep"] = t # Update to mark end of this cycle
             
-            elif phase == "shadow_op":
+            if phase == "shadow_op":
                 # Standard shadow mode operation
                 num_deactivated = sum(1 for s in state.SIMULATION_STATE["sensors"] if s["is_off"] and t < s["end_time"])
                 for s in state.SIMULATION_STATE["sensors"]:

@@ -1,5 +1,5 @@
 import threading
-import pandas as pd
+import csv
 import numpy as np
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -32,29 +32,47 @@ async def startup_event():
         primary_data_url = "https://raw.githubusercontent.com/Aitsam-Ahad/Datasets/main/GlobalWeather.csv"
         fallback_data_url = "https://raw.githubusercontent.com/Aitsam-Ahad/Datasets/main/advanced_iot.csv"
 
+        def download_and_parse_csv(url):
+            response = requests.get(url)
+            response.raise_for_status()
+            text_data = response.text
+            
+            # Use the csv module to parse the data
+            reader = csv.reader(io.StringIO(text_data))
+            header = next(reader)
+            
+            # Find the index of the 'date' column, if it exists
+            try:
+                date_index = header.index('date')
+            except ValueError:
+                date_index = -1
+
+            data_rows = []
+            for row in reader:
+                # Skip the date column if it was found
+                if date_index != -1:
+                    row.pop(date_index)
+                # Filter out empty strings and convert to float
+                data_rows.append([float(val) for val in row if val])
+
+            # Limit to the first 28 columns after potentially removing 'date'
+            return np.array(data_rows, dtype=np.float64)[:, :28]
+
         try:
             # Try loading the new dataset first from the URL
             print(f"Attempting to download primary dataset from: {primary_data_url}")
-            response = requests.get(primary_data_url)
-            response.raise_for_status()  # Raise an exception for bad status codes
-            df = pd.read_csv(io.StringIO(response.text)).iloc[:,:28]
+            raw_data = download_and_parse_csv(primary_data_url)
             print("Primary dataset downloaded and loaded successfully.")
             
-            if 'date' in df.columns:
-                df = df.drop(columns=['date'])
-            raw_data = df.values
-        except (requests.exceptions.RequestException, pd.errors.EmptyDataError) as e:
+        except (requests.exceptions.RequestException, IOError, ValueError) as e:
             print(f"Failed to load primary dataset: {e}. Trying fallback.")
             try:
                 # Fallback to the original dataset from the URL
                 print(f"Attempting to download fallback dataset from: {fallback_data_url}")
-                response = requests.get(fallback_data_url)
-                response.raise_for_status()
-                df_sensor = pd.read_csv(io.StringIO(response.text)).iloc[:,:28]
+                raw_data = download_and_parse_csv(fallback_data_url)
                 print("Fallback dataset downloaded and loaded successfully.")
                 
-                raw_data = df_sensor.drop(columns=['date']).values
-            except (requests.exceptions.RequestException, pd.errors.EmptyDataError) as e:
+            except (requests.exceptions.RequestException, IOError, ValueError) as e:
                 print(f"Failed to load fallback dataset: {e}. Using dummy data.")
                 raw_data = np.random.rand(20000, 28)
         
